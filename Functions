@@ -1,0 +1,421 @@
+Sub test()
+    ListSubfolders ("X:\Hunter Rose\Jobs")
+End Sub
+
+Sub ListSubfolders(HostFolder As String)
+    Dim FileSystem As Object
+    Dim SubFolders As Object
+    Dim SubFolder As Object
+    Dim i As Integer
+
+    
+    ' Initialize FileSystem object
+    Set FileSystem = CreateObject("Scripting.FileSystemObject")
+    
+    ' Check if the folder exists
+    If FileSystem.FolderExists(HostFolder) Then
+        Set SubFolders = FileSystem.GetFolder(HostFolder).SubFolders
+        
+        ' Clear previous content in columns A and B
+        Range("A:B").ClearContents
+        
+        ' Loop through each subfolder and write to columns A and B
+        i = 2
+        For Each SubFolder In SubFolders
+            ' Write subfolder short name to column B
+            Cells(i, 1).Value = SubFolder.ShortName
+            
+            Cells(i, 1).Value = SwapNumbers(Cells(i, 1).Value)
+            
+            Cells(i, 2).Value = CheckForString(SubFolder.Path)
+            
+            Cells(i, 3).Value = CheckForWR(SubFolder.Path)
+            
+            Cells(i, 4).Value = CheckForTX(SubFolder.Path)
+            
+            Cells(i, 5).Value = CheckForVDFL(SubFolder.Path)
+            
+            Cells(i, 6).Value = CheckForPFPDF(SubFolder.Path)
+            
+            Cells(i, 7).Value = CheckForCAD(SubFolder.Path)
+            
+            Cells(i, 8).Value = Date
+            
+            Cells(i, 9).Value = Date
+            
+            Cells(i, 10).Value = SubFolder.Path
+
+            
+            
+            
+            i = i + 1
+        Next SubFolder
+        
+        MsgBox "Subfolders listed successfully!", vbInformation
+    Else
+        MsgBox "The folder path is not valid.", vbExclamation
+    End If
+    
+    ' Clean up
+    Set FileSystem = Nothing
+    Set SubFolders = Nothing
+    Set SubFolder = Nothing
+End Sub
+
+Function CheckForPFPDF(folderPath As String) As String
+    Dim FileSystem As Object
+    Dim Folder As Object
+    Dim File As Object
+    Dim hasPF As Boolean
+    
+    ' Initialize FileSystem object
+    Set FileSystem = CreateObject("Scripting.FileSystemObject")
+    
+    ' Check if the folder exists
+    If FileSystem.FolderExists(folderPath) Then
+        Set Folder = FileSystem.GetFolder(folderPath)
+        
+        ' Check each file in the folder
+        For Each File In Folder.Files
+            ' Check if the file is a PDF and contains "PF" in the name
+            If InStr(1, File.Name, ".pdf", vbTextCompare) > 0 And InStr(1, File.Name, "PF", vbTextCompare) > 0 Then
+                CheckForPFPDF = "PF"
+                Exit Function
+            End If
+        Next File
+    End If
+    
+    ' If no matching PDF file is found, return an empty string
+    CheckForPFPDF = ""
+    
+    ' Clean up
+    Set FileSystem = Nothing
+    Set Folder = Nothing
+    Set File = Nothing
+End Function
+
+
+Function CheckForVDFL(folderPath As String) As String
+    Dim FileSystem As Object
+    Dim Folder As Object
+    Dim File As Object
+    Dim hasPF As Boolean
+    
+    ' Initialize FileSystem object
+    Set FileSystem = CreateObject("Scripting.FileSystemObject")
+    
+    ' Check if the folder exists
+    If FileSystem.FolderExists(folderPath) Then
+        Set Folder = FileSystem.GetFolder(folderPath)
+        
+        ' Check each file in the folder
+        For Each File In Folder.Files
+            ' Check if the file is a PDF and contains "PF" in the name
+            If InStr(1, File.Name, ".pdf", vbTextCompare) > 0 And InStr(1, File.Name, "VD", vbTextCompare) > 0 Then
+                CheckForVDFL = "VD/FL"
+                Exit Function
+            ElseIf InStr(1, File.Name, ".pdf", vbTextCompare) > 0 And InStr(1, File.Name, "FL", vbTextCompare) > 0 Then
+                CheckForVDFL = "VD/FL"
+                Exit Function
+            End If
+        Next File
+    End If
+    
+    ' If no matching PDF file is found, return an empty string
+    CheckForVDFL = ""
+    
+    ' Clean up
+    Set FileSystem = Nothing
+    Set Folder = Nothing
+    Set File = Nothing
+End Function
+
+
+Function CheckForWR(folderPath As String) As String
+    Dim FileSystem As Object
+    Dim Folder As Object
+    Dim SubFolder As Object
+    Dim File As Object
+    Dim fileName As String
+    Dim FileExtension As String
+    Dim fileBaseName As String
+    Dim fileNumberString As String
+    Dim i As Integer
+    Dim consecutiveNumbers As Integer
+    Dim hasWR As Boolean
+    
+    ' Initialize FileSystem object
+    Set FileSystem = CreateObject("Scripting.FileSystemObject")
+    
+    ' Check if the folder exists
+    If FileSystem.FolderExists(folderPath) Then
+        Set Folder = FileSystem.GetFolder(folderPath)
+        
+        ' Check each file in the folder
+        For Each File In Folder.Files
+            ' Get file name, extension, and base name
+            fileName = File.Name
+            FileExtension = LCase(FileSystem.GetExtensionName(fileName))
+            fileBaseName = Left(fileName, Len(fileName) - Len(FileExtension) - 1)
+            
+            ' Check if the file extension is PDF or DWG
+            If FileExtension = "pdf" Or FileExtension = "dwg" Then
+                ' Reset consecutive numbers count
+                consecutiveNumbers = 0
+                
+                ' Check each character in the file base name
+                For i = 1 To Len(fileBaseName)
+                    ' Check if the character is a digit
+                    If IsNumeric(Mid(fileBaseName, i, 1)) Then
+                        ' Increment consecutive numbers count
+                        consecutiveNumbers = consecutiveNumbers + 1
+                    Else
+                        ' Reset consecutive numbers count if non-numeric character encountered
+                        consecutiveNumbers = 0
+                    End If
+                    
+                    ' Check if the consecutive numbers count is longer than 7
+                    If consecutiveNumbers > 7 Then
+                        ' Set flag indicating that the file contains a string of numbers longer than 7 consecutive
+                        hasWR = True
+                        Exit For
+                    End If
+                Next i
+                
+                ' Exit the loop if "WR" condition is met
+                If hasWR Then Exit For
+            End If
+        Next File
+        
+        ' Check subfolders recursively
+        If Not hasWR Then
+            For Each SubFolder In Folder.SubFolders
+                CheckForWR = CheckForWR(SubFolder.Path)
+                If CheckForWR = "WR" Then Exit Function
+            Next SubFolder
+        End If
+    End If
+    
+    ' Return "WR" if the condition is met, otherwise return an empty string
+    If hasWR Then
+        CheckForWR = "WR"
+    Else
+        CheckForWR = ""
+    End If
+    
+    ' Clean up
+    Set FileSystem = Nothing
+    Set Folder = Nothing
+    Set File = Nothing
+End Function
+
+Function CheckForString(folderPath As String) As String
+    Dim FileSystem As Object
+    Dim Folder As Object
+    Dim SubFolder As Object
+    Dim File As Object
+    Dim fileName As String
+    Dim FileExtension As String
+    Dim fileBaseName As String
+    Dim i As Integer
+    Dim consecutiveNumbers As Integer
+    Dim foundString As String
+    
+    ' Initialize FileSystem object
+    Set FileSystem = CreateObject("Scripting.FileSystemObject")
+    
+    ' Check if the folder exists
+    If FileSystem.FolderExists(folderPath) Then
+        Set Folder = FileSystem.GetFolder(folderPath)
+        
+        ' Check each file in the folder
+        For Each File In Folder.Files
+            ' Get file name, extension, and base name
+            fileName = File.Name
+            FileExtension = LCase(FileSystem.GetExtensionName(fileName))
+            fileBaseName = Left(fileName, Len(fileName) - Len(FileExtension) - 1)
+            
+            ' Check if the file extension is PDF or DWG
+            If FileExtension = "pdf" Or FileExtension = "dwg" Then
+                ' Reset consecutive numbers count
+                consecutiveNumbers = 0
+                
+                ' Check each character in the file base name
+                For i = 1 To Len(fileBaseName)
+                    ' Check if the character is a digit
+                    If IsNumeric(Mid(fileBaseName, i, 1)) Then
+                        ' Increment consecutive numbers count
+                        consecutiveNumbers = consecutiveNumbers + 1
+                    Else
+                        ' Reset consecutive numbers count if non-numeric character encountered
+                        consecutiveNumbers = 0
+                    End If
+                    
+                    ' Check if the consecutive numbers count is longer than 7
+                    If consecutiveNumbers > 7 Then
+                        ' Extract the found string
+                        foundString = Mid(fileBaseName, i - consecutiveNumbers + 1, consecutiveNumbers)
+                        Exit For
+                    End If
+                Next i
+                
+                ' Exit the loop if a string is found
+                If foundString <> "" Then Exit For
+            End If
+        Next File
+        
+        ' If no string is found in the current folder, check subfolders recursively
+        If foundString = "" Then
+            For Each SubFolder In Folder.SubFolders
+                foundString = CheckForString(SubFolder.Path)
+                ' If a string is found in a subfolder, exit the loop
+                If foundString <> "" Then Exit For
+            Next SubFolder
+        End If
+    End If
+    
+    ' Return the found string, if any
+    CheckForString = foundString
+    
+    ' Clean up
+    Set FileSystem = Nothing
+    Set Folder = Nothing
+    Set File = Nothing
+End Function
+
+
+Function CheckForTX(folderPath As String) As String
+    Dim FileSystem As Object
+    Dim Folder As Object
+    Dim File As Object
+    Dim hasPF As Boolean
+    
+    ' Initialize FileSystem object
+    Set FileSystem = CreateObject("Scripting.FileSystemObject")
+    
+    ' Check if the folder exists
+    If FileSystem.FolderExists(folderPath) Then
+        Set Folder = FileSystem.GetFolder(folderPath)
+        
+        ' Check each file in the folder
+        For Each File In Folder.Files
+            ' Check if the file is a PDF, XLSX, or XLSM and contains "PF" or "W=" in the name
+            If (InStr(1, File.Name, ".pdf", vbTextCompare) > 0 Or InStr(1, File.Name, ".xlsx", vbTextCompare) > 0 Or InStr(1, File.Name, ".xlsm", vbTextCompare) > 0) And _
+                (InStr(1, File.Name, "S=", vbTextCompare) > 0 Or InStr(1, File.Name, "W=", vbTextCompare) > 0) Then
+                CheckForTX = "TX"
+                Exit Function
+            End If
+        Next File
+    End If
+    
+    ' If no matching PDF, XLSX, or XLSM file is found, return an empty string
+    CheckForTX = ""
+    
+    ' Clean up
+    Set FileSystem = Nothing
+    Set Folder = Nothing
+    Set File = Nothing
+End Function
+
+
+Function CheckForCAD(folderPath As String) As String
+    Dim FileSystem As Object
+    Dim Folder As Object
+    Dim SubFolder As Object
+    Dim File As Object
+    Dim fileName As String
+    Dim FileExtension As String
+    Dim fileBaseName As String
+    Dim fileNumberString As String
+    Dim i As Integer
+    Dim consecutiveNumbers As Integer
+    Dim hasWR As Boolean
+    
+    ' Initialize FileSystem object
+    Set FileSystem = CreateObject("Scripting.FileSystemObject")
+    
+    ' Check if the folder exists
+    If FileSystem.FolderExists(folderPath) Then
+        Set Folder = FileSystem.GetFolder(folderPath)
+        
+        ' Check each file in the folder
+        For Each File In Folder.Files
+            ' Get file name, extension, and base name
+            fileName = File.Name
+            FileExtension = LCase(FileSystem.GetExtensionName(fileName))
+            fileBaseName = Left(fileName, Len(fileName) - Len(FileExtension) - 1)
+            
+            ' Check if the file extension is PDF or DWG
+            If FileExtension = "pdf" Or FileExtension = "dwg" Then
+                ' Reset consecutive numbers count
+                consecutiveNumbers = 0
+                
+                ' Check each character in the file base name
+                For i = 1 To Len(fileBaseName)
+                    ' Check if the character is a digit
+                    If IsNumeric(Mid(fileBaseName, i, 1)) Then
+                        ' Increment consecutive numbers count
+                        consecutiveNumbers = consecutiveNumbers + 1
+                    Else
+                        ' Reset consecutive numbers count if non-numeric character encountered
+                        consecutiveNumbers = 0
+                    End If
+                    
+                    ' Check if the consecutive numbers count is longer than 7
+                    If consecutiveNumbers > 7 Then
+                        ' Set flag indicating that the file contains a string of numbers longer than 7 consecutive
+                        hasWR = True
+                        Exit For
+                    End If
+                Next i
+                
+                ' Exit the loop if "CAD" condition is met
+                If hasWR Then Exit For
+            End If
+        Next File
+        
+        ' Check subfolders recursively
+        If Not hasWR Then
+            For Each SubFolder In Folder.SubFolders
+                CheckForCAD = CheckForCAD(SubFolder.Path)
+                If CheckForCAD = "CAD" Then Exit Function
+            Next SubFolder
+        End If
+    End If
+    
+    ' Return "CAD" if the condition is met, otherwise return an empty string
+    If hasWR Then
+        CheckForCAD = "CAD"
+    Else
+        CheckForCAD = ""
+    End If
+    
+    ' Clean up
+    Set FileSystem = Nothing
+    Set Folder = Nothing
+    Set File = Nothing
+End Function
+
+
+
+Function SwapNumbers(inputString As String) As String
+    Dim i As Integer
+    Dim lastSpaceIndex As Integer
+    Dim numbersString As String
+    Dim restOfString As String
+    
+    ' Find the index of the last space in the string
+    lastSpaceIndex = InStrRev(inputString, " ")
+    
+    ' Extract the numbers string from the input string
+    numbersString = Right(inputString, Len(inputString) - lastSpaceIndex)
+    
+    ' Remove the space from the numbers string
+    numbersString = Replace(numbersString, " ", "")
+    
+    ' Extract the rest of the string (excluding numbers)
+    restOfString = Left(inputString, lastSpaceIndex - 1)
+    
+    ' Concatenate the rest of the string with the numbers string swapped to the right
+    SwapNumbers = numbersString & " " & restOfString
+End Function
